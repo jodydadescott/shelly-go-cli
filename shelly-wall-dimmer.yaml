@@ -1,0 +1,44 @@
+auth:
+  enable: false
+  pass: '*** if you enable auth this will need to be replaced with a password ***'
+ble:
+  enable: false
+cloud:
+  enable: false
+mqtt:
+  enable: true
+  server: 10.0.0.153
+  topic_prefix: shelly
+  rpc_ntf: true
+  status_ntf: true
+sys:
+  device:
+    eco_mode: false
+    discoverable: true
+  location:
+    tz: America/Denver
+    lat: 39.630661
+    lon: -104.897362
+  sntp:
+    server: time.google.com
+wifi:
+  ap:
+    enable: false
+  sta:
+    ssid: SR71-D
+    pass: dpJk550834@eRR
+    is_open: false
+    enable: true
+    ipv4mode: dhcp
+  sta1:
+    enable: false
+  roam:
+    rssi_thr: -80
+    interval: 60
+light:
+- id: 0
+  initial_state: restore_last
+  auto_on: false
+  auto_on_delay: 60
+  auto_off: false
+  auto_off_delay: 60
