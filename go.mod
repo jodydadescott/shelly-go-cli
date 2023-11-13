@@ -12,7 +12,7 @@ require (
 	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
-	github.com/jodydadescott/shelly-go-sdk v0.0.0-20230810194302-bcbf0357fda1 // indirect
+	github.com/jodydadescott/shelly-go-sdk v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/spf13/cobra v1.7.0 // indirect
@@ -21,4 +21,8 @@ require (
 	go.uber.org/zap v1.25.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+)
+
+replace (
+	github.com/jodydadescott/shelly-go-sdk v1.0.0 => ../shelly-go-sdk
 )

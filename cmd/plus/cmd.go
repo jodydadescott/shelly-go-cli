@@ -17,13 +17,14 @@ import (
 	shellycmd "github.com/jodydadescott/shelly-go-cli/cmd/plus/shelly"
 	switchxcmd "github.com/jodydadescott/shelly-go-cli/cmd/plus/switchx"
 	wificmd "github.com/jodydadescott/shelly-go-cli/cmd/plus/wifi"
+	"github.com/jodydadescott/shelly-go-cli/types"
 )
 
 type callback interface {
 	PlusClient() (*plus.Client, error)
 	WriteStdout(any) error
 	WriteStderr(string)
-	ReadInput() ([]byte, error)
+	GetFiles() (*types.Files, error)
 }
 
 type Cmd struct {

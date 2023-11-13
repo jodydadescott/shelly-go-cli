@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"reflect"
 	"strings"
@@ -19,6 +18,7 @@ import (
 
 	pluscmd "github.com/jodydadescott/shelly-go-cli/cmd/plus"
 	"github.com/jodydadescott/shelly-go-cli/logging"
+	"github.com/jodydadescott/shelly-go-cli/types"
 )
 
 type Cmd struct {
@@ -66,7 +66,7 @@ func NewCmd() *Cmd {
 	t.PersistentFlags().StringVarP(&t.hostnameArg, "hostname", "H", "", fmt.Sprintf("Hostname; optionally use env var '%s'", ShellyHostnameEnvVar))
 	t.PersistentFlags().StringVarP(&t.hostnameArg, "password", "p", "", fmt.Sprintf("Password; optionally use env var '%s'", ShellyPasswordEnvVar))
 	t.PersistentFlags().StringVarP(&t.outputArg, "output", "o", ShellyOutputDefault, fmt.Sprintf("Output format. One of: prettyjson | json | jsonpath | yaml ; Optionally use env var '%s'", ShellyOutputEnvVar))
-	t.PersistentFlags().StringVarP(&t.filenameArg, "filename", "f", "", "Filename, directory, or URL")
+	t.PersistentFlags().StringVarP(&t.filenameArg, "filename", "f", "", "Filename or Dirname")
 	t.PersistentFlags().BoolVarP(&t.debugEnabledArg, "debug", "d", false, "debug to STDERR")
 	t.AddCommand(pluscmd.NewCmd(t))
 
@@ -81,6 +81,8 @@ func (t *Cmd) client() *shelly.Client {
 
 	config := &shelly.Config{
 		DebugEnabled: t.debugEnabledArg,
+		Hostname:     t.hostnameArg,
+		Password:     t.passwordArg,
 	}
 
 	if config.Hostname == "" {
@@ -157,8 +159,6 @@ func (t *Cmd) WriteStdout(input any) error {
 				return err
 			}
 
-			//	fmt.Println(reflect.TypeOf(data2))
-
 			switch data2.(type) {
 			case string:
 				fmt.Println(data2)
@@ -200,23 +200,27 @@ func (t *Cmd) WriteStderr(s string) {
 	fmt.Fprintln(os.Stderr, s)
 }
 
-// ReadInput reads input from file if specified. If no file is specified STDIN will be checked and
-// if present will be returned. If filename is not specified and no STDIN data is present then an error
-// will be returned.
-func (t *Cmd) ReadInput() ([]byte, error) {
+// // ReadInput reads input from file if specified. If no file is specified STDIN will be checked and
+// // if present will be returned. If filename is not specified and no STDIN data is present then an error
+// // will be returned.
+// func (t *Cmd) ReadInput() ([]byte, error) {
 
-	if t.filenameArg != "" {
-		return os.ReadFile(t.filenameArg)
-	}
+// 	if t.filenameArg != "" {
+// 		return os.ReadFile(t.filenameArg)
+// 	}
 
-	fi, err := os.Stdin.Stat()
-	if err != nil {
-		return nil, err
-	}
+// 	fi, err := os.Stdin.Stat()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	if (fi.Mode() & os.ModeCharDevice) == 0 {
-		return io.ReadAll(os.Stdin)
-	}
+// 	if (fi.Mode() & os.ModeCharDevice) == 0 {
+// 		return io.ReadAll(os.Stdin)
+// 	}
 
-	return nil, fmt.Errorf("Data input is required. Use filename or pipe to STDIN")
+// 	return nil, fmt.Errorf("Data input is required. Use filename or pipe to STDIN")
+// }
+
+func (t *Cmd) GetFiles() (*types.Files, error) {
+	return types.NewFiles(t.filenameArg)
 }

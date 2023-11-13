@@ -33,7 +33,8 @@ func NewCmd(callback callback) *cobra.Command {
 				return err
 			}
 
-			return callback.WriteStdout(results)
+			callback.WriteStdout(results)
+			return nil
 		},
 	}
 
@@ -52,7 +53,8 @@ func NewCmd(callback callback) *cobra.Command {
 				return err
 			}
 
-			return callback.WriteStdout(results)
+			callback.WriteStdout(results)
+			return nil
 		},
 	}
 

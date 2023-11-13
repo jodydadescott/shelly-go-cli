@@ -4,40 +4,28 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
+	"github.com/jodydadescott/shelly-go-cli/types"
 	"github.com/jodydadescott/shelly-go-sdk/plus/shelly"
 )
 
 type callback interface {
 	WriteStdout(any) error
 	WriteStderr(s string)
-	ReadInput() ([]byte, error)
 	Shelly() (*shelly.Client, error)
 	RebootDevice(ctx context.Context) error
+	GetFiles() (*types.Files, error)
 }
 
 func NewCmd(callback callback) *cobra.Command {
 
 	var stageArg string
 	var urlArg string
-	var appendArg string
-	var autorebootArg bool
-
-	var ignoreAuth bool
-	var ignoreNetArg bool
-	var ignoreBluetoothArg bool
-	var ignoreCloudArg bool
-	var ignoreInputArg bool
-	var ignoreLightArg bool
-	var ignoreMqttArg bool
-	var ignoreSwitchArg bool
-	var ignoreSystemArg bool
-	var ignoreWebsocketArg bool
+	var disableAutoRebootArg bool
 	var markupArg bool
 
 	rootCmd := &cobra.Command{
@@ -221,71 +209,96 @@ func NewCmd(callback callback) *cobra.Command {
 		Short: "Sets config",
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			client, err := callback.Shelly()
-			if err != nil {
-				return err
-			}
-
-			b, err := callback.ReadInput()
-			if err != nil {
-				return err
-			}
-
 			var config *shelly.ShellyConfig
 
-			var errors *multierror.Error
+			setConfig := func(b []byte) error {
 
-			err = json.Unmarshal(b, &config)
-			if err != nil {
-				errors = multierror.Append(errors, err)
-				err = yaml.Unmarshal(b, &config)
+				var errors *multierror.Error
+
+				err := json.Unmarshal(b, &config)
 
 				if err != nil {
 					errors = multierror.Append(errors, err)
-					errors = multierror.Append(errors, fmt.Errorf("Invalid format. Expect JSON or YAML"))
-					return errors.ErrorOrNil()
+					err = yaml.Unmarshal(b, &config)
+
+					if err != nil {
+						errors = multierror.Append(errors, err)
+						errors = multierror.Append(errors, fmt.Errorf("Invalid format. Expect JSON or YAML"))
+						return errors.ErrorOrNil()
+					}
 				}
+
+				return nil
 			}
 
-			if ignoreAuth {
-				config.Auth = nil
+			client, err := callbac  k.Shelly()
+			if err != nil {
+				return err
 			}
 
-			if ignoreNetArg {
-				config.Ethernet = nil
-				config.Wifi = nil
+			files, err := callback.GetFiles()
+			if err != nil {
+				return err
 			}
 
-			if ignoreBluetoothArg {
-				config.Bluetooth = nil
+			if files.IsDir {
+
+				device, err := client.GetDeviceInfo(cmd.Context())
+				if err != nil {
+					return err
+				}
+
+
+
+				file := files.GetFiles(*result.ID)
+
 			}
 
-			if ignoreCloudArg {
-				config.Cloud = nil
-			}
+			if fileLen == 1 {
 
-			if ignoreInputArg {
-				config.Input = nil
-			}
+				fmt.Println("trace 5")
 
-			if ignoreLightArg {
-				config.Light = nil
-			}
+				for _, file := range files.Files {
+					err := setConfig(file.Bytes)
+					if err != nil {
+						return err
+					}
+				}
 
-			if ignoreMqttArg {
-				config.Mqtt = nil
-			}
+			} else {
 
-			if ignoreSwitchArg {
-				config.Switch = nil
-			}
+				fmt.Println("trace 6")
 
-			if ignoreSystemArg {
-				config.System = nil
-			}
+				result, err := client.GetDeviceInfo(cmd.Context())
+				if err != nil {
+					return err
+				}
 
-			if ignoreWebsocketArg {
-				config.Websocket = nil
+				if file == nil {
+					return fmt.Errorf("no matching file found")
+				}
+
+				fmt.Println("trace 7")
+
+				if file.STDIN {
+
+					fmt.Println("trace 8")
+
+					callback.WriteStderr("Using STDIN")
+				} else {
+
+					fmt.Println("trace 3")
+
+					callback.WriteStderr("Using file " + file.BaseName)
+				}
+
+				fmt.Println("trace 10")
+
+				err = setConfig(file.Bytes)
+				if err != nil {
+					return err
+				}
+
 			}
 
 			report := client.SetConfig(cmd.Context(), config)
@@ -297,148 +310,23 @@ func NewCmd(callback callback) *cobra.Command {
 			}
 
 			if report.RebootRequired() {
-				if autorebootArg {
-					callback.WriteStderr("reboot is required; rebooting ...")
-					return callback.RebootDevice(cmd.Context())
-
+				if disableAutoRebootArg {
+					callback.WriteStderr("reboot is required; autoreboot is disabled")
+					return nil
 				}
 
-				callback.WriteStderr("reboot is required")
+				callback.WriteStderr("rebooting")
+				return callback.RebootDevice(cmd.Context())
 			}
 
-			return callback.WriteStdout(report)
+			return nil
 		},
 	}
 
-	setConfigCmd.PersistentFlags().BoolVar(&autorebootArg, "autoreboot", false, "automatically reboot device is necessary")
-
-	setConfigCmd.PersistentFlags().BoolVar(&ignoreAuth, "ignore-auth", false, "ignore Auth config")
-	setConfigCmd.PersistentFlags().BoolVar(&ignoreNetArg, "ignore-net", false, "ignore net (Ethernet/Wifi) config")
-
-	setConfigCmd.PersistentFlags().BoolVar(&ignoreBluetoothArg, "ignore-bluetooth", false, "ignore Bluetooth config")
-	setConfigCmd.PersistentFlags().BoolVar(&ignoreCloudArg, "ignore-cloud", false, "ignore Cloud config")
-	setConfigCmd.PersistentFlags().BoolVar(&ignoreInputArg, "ignore-input", false, "ignore Input config")
-	setConfigCmd.PersistentFlags().BoolVar(&ignoreLightArg, "ignore-light", false, "ignore Light config")
-	setConfigCmd.PersistentFlags().BoolVar(&ignoreMqttArg, "ignore-mqtt", false, "ignore Mqtt config")
-	setConfigCmd.PersistentFlags().BoolVar(&ignoreSwitchArg, "ignore-switch", false, "ignore Switch config")
-	setConfigCmd.PersistentFlags().BoolVar(&ignoreSystemArg, "ignore-system", false, "ignore System config")
-	setConfigCmd.PersistentFlags().BoolVar(&ignoreWebsocketArg, "ignore-websocket", false, "ignore Websocket config")
-
-	getAppend := func() (bool, error) {
-
-		switch strings.ToLower(appendArg) {
-
-		case "true":
-			return true, nil
-
-		case "false":
-			return false, nil
-
-		default:
-			return false, fmt.Errorf("append must be set to true or false")
-
-		}
-
-	}
-
-	putTlsClientCertCmd := &cobra.Command{
-		Use:   "put-tls-client-cert",
-		Short: "Sets TLS Client Cert",
-		RunE: func(cmd *cobra.Command, args []string) error {
-
-			client, err := callback.Shelly()
-			if err != nil {
-				return err
-			}
-
-			append, err := getAppend()
-			if err != nil {
-				return err
-			}
-
-			b, err := callback.ReadInput()
-			if err != nil {
-				return err
-			}
-
-			data := string(b)
-
-			return client.PutTLSClientCert(cmd.Context(), &shelly.ShellyTLSConfig{
-				Data:   &data,
-				Append: &append,
-			})
-		},
-	}
-
-	appendMsg := "true if more data will be appended afterwards, default false"
-
-	putTlsClientCertCmd.PersistentFlags().StringVar(&appendArg, "append", "", appendMsg)
-
-	putTlsClientKeyCmd := &cobra.Command{
-		Use:   "put-tls-client-key",
-		Short: "Sets TLS Client Key",
-		RunE: func(cmd *cobra.Command, args []string) error {
-
-			client, err := callback.Shelly()
-			if err != nil {
-				return err
-			}
-
-			append, err := getAppend()
-			if err != nil {
-				return err
-			}
-
-			b, err := callback.ReadInput()
-			if err != nil {
-				return err
-			}
-
-			data := string(b)
-
-			return client.PutTLSClientKey(cmd.Context(), &shelly.ShellyTLSConfig{
-				Data:   &data,
-				Append: &append,
-			})
-		},
-	}
-
-	putTlsClientKeyCmd.PersistentFlags().StringVar(&appendArg, "append", "", appendMsg)
-
-	putUserCACmd := &cobra.Command{
-		Use:   "put-user-ca",
-		Short: "Sets Users CA",
-		RunE: func(cmd *cobra.Command, args []string) error {
-
-			client, err := callback.Shelly()
-			if err != nil {
-				return err
-			}
-
-			append, err := getAppend()
-			if err != nil {
-				return err
-			}
-
-			b, err := callback.ReadInput()
-			if err != nil {
-				return err
-			}
-
-			data := string(b)
-
-			return client.PutUserCA(cmd.Context(), &shelly.ShellyTLSConfig{
-				Data:   &data,
-				Append: &append,
-			})
-		},
-	}
-
-	putUserCACmd.PersistentFlags().StringVar(&appendArg, "append", "", appendMsg)
+	setConfigCmd.PersistentFlags().BoolVar(&disableAutoRebootArg, "disable-autoreboot", false, "disable automatic reboot (if reboot is necessary)")
 
 	rootCmd.AddCommand(getConfigCmd, getStatusCmd, getInfoCmd, getMethodsCmd,
 		getUpdatesCmd, rebootCmd, updateCmd,
-		factoryResetCmd, resetWifiConfigCmd, setConfigCmd,
-		putTlsClientCertCmd, putTlsClientKeyCmd, putUserCACmd)
+		factoryResetCmd, resetWifiConfigCmd, setConfigCmd)
 	return rootCmd
 }

@@ -1,13 +1,10 @@
-auth:
-  enable: false
-  pass: '*** if you enable auth this will need to be replaced with a password ***'
 ble:
   enable: false
 cloud:
   enable: false
 mqtt:
   enable: true
-  server: 10.0.0.153
+  server: 10.0.0.10
   topic_prefix: shelly
   rpc_ntf: true
   status_ntf: true
@@ -25,8 +22,8 @@ wifi:
   ap:
     enable: false
   sta:
-    ssid: SR71-D
-    pass: dpJk550834@eRR
+    ssid: M2M
+    pass: kW33pAA@eh22
     is_open: false
     enable: true
     ipv4mode: dhcp
@@ -36,9 +33,9 @@ wifi:
     rssi_thr: -80
     interval: 60
 light:
-- id: 0
-  initial_state: restore_last
-  auto_on: false
-  auto_on_delay: 60
-  auto_off: false
-  auto_off_delay: 60
+  - id: 0
+    initial_state: restore_last
+    auto_on: false
+    auto_on_delay: 60
+    auto_off: false
+    auto_off_delay: 60

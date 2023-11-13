@@ -15,7 +15,6 @@ var (
 )
 
 type callback interface {
-	ReadInput() ([]byte, error)
 	Switch() (*switchx.Client, error)
 }
 
