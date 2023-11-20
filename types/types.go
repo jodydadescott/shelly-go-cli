@@ -3,7 +3,6 @@ package types
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,8 +16,7 @@ type File struct {
 }
 
 type Files struct {
-	IsDir bool
-	File  *File
+	isDir bool
 	Files []*File
 }
 
@@ -36,39 +34,74 @@ func newFile(name string, bytes []byte, stdin bool) *File {
 	return f
 }
 
-func (t *Files) GetFiles(name string) *File {
+func (t *Files) GetNamedFile() *File {
 
-	for _, file := range t.Files {
-		if !file.STDIN {
-			if file.BaseName == name {
-				return file
-			}
-			if file.BaseName == name+".yaml" {
-				return file
-			}
-			if file.BaseName == name+".json" {
-				return file
-			}
-
-			split := strings.Split(name, "-")
-
-			if file.BaseName == split[0]+".yaml" {
-				return file
-			}
-
-			if file.BaseName == split[0]+".json" {
-				return file
-			}
-
-		}
+	if !t.isDir {
+		return nil
 	}
 
+	for _, file := range t.Files {
+		return file
+	}
+
+	return nil
+}
+
+func (t *Files) GetFile(name string) *File {
+
+	getFile := func(subname string) *File {
+
+		for _, file := range t.Files {
+			if !file.STDIN {
+				if file.BaseName == subname {
+					return file
+				}
+				if file.BaseName == subname+".yaml" {
+					return file
+				}
+				if file.BaseName == subname+".json" {
+					return file
+				}
+
+				split := strings.Split(subname, "-")
+
+				if file.BaseName == split[0]+".yaml" {
+					return file
+				}
+
+				if file.BaseName == split[0]+".json" {
+					return file
+				}
+
+			}
+		}
+		return nil
+	}
+
+	file := getFile(name)
+	if file != nil {
+		return file
+	}
+
+	file = getFile(strings.ToLower((name)))
+	if file != nil {
+		return file
+	}
+
+	file = getFile(strings.ToUpper((name)))
+	if file != nil {
+		return file
+	}
+
+	return nil
+}
+
+func (t *Files) GetSTDIN() *File {
 	for _, file := range t.Files {
 		if file.STDIN {
 			return file
 		}
 	}
-
 	return nil
 }
 
@@ -85,9 +118,9 @@ func NewFiles(input string) (*Files, error) {
 
 		if info.IsDir() {
 
-			files.IsDir = true
+			files.isDir = true
 
-			rawFiles, err := ioutil.ReadDir(input)
+			rawFiles, err := os.ReadDir(input)
 			if err != nil {
 				return nil, err
 			}
@@ -132,5 +165,5 @@ func NewFiles(input string) (*Files, error) {
 		return files, nil
 	}
 
-	return nil, fmt.Errorf("Data input is required. Use filename or pipe to STDIN")
+	return nil, fmt.Errorf("data input is required. Use filename or pipe to STDIN")
 }

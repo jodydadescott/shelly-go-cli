@@ -211,19 +211,21 @@ func NewCmd(callback callback) *cobra.Command {
 
 			var config *shelly.ShellyConfig
 
-			setConfig := func(b []byte) error {
+			setConfig := func(file *types.File) error {
 
 				var errors *multierror.Error
 
-				err := json.Unmarshal(b, &config)
+				callback.WriteStderr(fmt.Sprintf("Using file %s", file.FullName))
+
+				err := json.Unmarshal(file.Bytes, &config)
 
 				if err != nil {
 					errors = multierror.Append(errors, err)
-					err = yaml.Unmarshal(b, &config)
+					err = yaml.Unmarshal(file.Bytes, &config)
 
 					if err != nil {
 						errors = multierror.Append(errors, err)
-						errors = multierror.Append(errors, fmt.Errorf("Invalid format. Expect JSON or YAML"))
+						errors = multierror.Append(errors, fmt.Errorf("invalid format. Expect JSON or YAML"))
 						return errors.ErrorOrNil()
 					}
 				}
@@ -231,7 +233,7 @@ func NewCmd(callback callback) *cobra.Command {
 				return nil
 			}
 
-			client, err := callbac  k.Shelly()
+			client, err := callback.Shelly()
 			if err != nil {
 				return err
 			}
@@ -241,64 +243,29 @@ func NewCmd(callback callback) *cobra.Command {
 				return err
 			}
 
-			if files.IsDir {
-
-				device, err := client.GetDeviceInfo(cmd.Context())
-				if err != nil {
-					return err
-				}
-
-
-
-				file := files.GetFiles(*result.ID)
-
+			file := files.GetNamedFile()
+			if file != nil {
+				return setConfig(file)
 			}
 
-			if fileLen == 1 {
+			file = files.GetSTDIN()
+			if file != nil {
+				return setConfig(file)
+			}
 
-				fmt.Println("trace 5")
+			device, err := client.GetDeviceInfo(cmd.Context())
+			if err != nil {
+				return err
+			}
 
-				for _, file := range files.Files {
-					err := setConfig(file.Bytes)
-					if err != nil {
-						return err
-					}
-				}
+			file = files.GetFile(*device.ID)
+			if file != nil {
+				return setConfig(file)
+			}
 
-			} else {
-
-				fmt.Println("trace 6")
-
-				result, err := client.GetDeviceInfo(cmd.Context())
-				if err != nil {
-					return err
-				}
-
-				if file == nil {
-					return fmt.Errorf("no matching file found")
-				}
-
-				fmt.Println("trace 7")
-
-				if file.STDIN {
-
-					fmt.Println("trace 8")
-
-					callback.WriteStderr("Using STDIN")
-				} else {
-
-					fmt.Println("trace 3")
-
-					callback.WriteStderr("Using file " + file.BaseName)
-				}
-
-				fmt.Println("trace 10")
-
-				err = setConfig(file.Bytes)
-				if err != nil {
-					return err
-				}
-
+			file = files.GetFile(*device.App)
+			if file != nil {
+				return setConfig(file)
 			}
 
 			report := client.SetConfig(cmd.Context(), config)
